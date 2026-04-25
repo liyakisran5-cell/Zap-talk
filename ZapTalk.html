@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZapTalk — Lightning Fast Messaging</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --sidebar-bg: #111318;
+    --chat-bg: #0a0c10;
+    --accent: #00e5a0;
+    --accent2: #00b4ff;
+    --accent-glow: rgba(0,229,160,0.18);
+    --bubble-out: linear-gradient(135deg, #00e5a0, #00b4ff);
+    --bubble-in: #1a1d27;
+    --text: #e8ecf4;
+    --text-muted: #6b7280;
+    --border: rgba(255,255,255,0.06);
+    --hover: rgba(255,255,255,0.04);
+    --online: #00e5a0;
+    --radius: 18px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Sora', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width: 340px;
+    min-width: 340px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .sidebar-header {
+    padding: 20px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--sidebar-bg);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+  }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: var(--bubble-out);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 0 16px var(--accent-glow);
+    flex-shrink: 0;
+  }
+  .logo-text {
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+  }
+  .logo-tag {
+    font-size: 9px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .header-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    border: none;
+    background: var(--hover);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    transition: all 0.2s;
+  }
+  .icon-btn:hover { background: var(--accent-glow); color: var(--accent); }
+
+  /* Search */
+  .search-wrap {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 14px;
+  }
+  .search-box input {
+    flex: 1; background: none; border: none; outline: none;
+    color: var(--text); font-family: 'Sora', sans-serif; font-size: 13px;
+  }
+  .search-box input::placeholder { color: var(--text-muted); }
+  .search-icon { color: var(--text-muted); font-size: 14px; }
+
+  /* Story row */
+  .stories-row {
+    display: flex; gap: 10px; padding: 14px 16px;
+    overflow-x: auto; border-bottom: 1px solid var(--border);
+  }
+  .stories-row::-webkit-scrollbar { display: none; }
+  .story {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    cursor: pointer; min-width: 54px;
+  }
+  .story-ring {
+    width: 48px; height: 48px; border-radius: 50%;
+    padding: 2px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    flex-shrink: 0;
+  }
+  .story-ring.add {
+    background: var(--hover);
+    border: 2px dashed rgba(255,255,255,0.1);
+  }
+  .story-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    object-fit: cover; border: 2px solid var(--sidebar-bg);
+    background: #1e2130;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .story-name { font-size: 10px; color: var(--text-muted); text-align: center; max-width: 52px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .story.add-story .story-avatar { font-size: 22px; color: var(--accent); }
+
+  /* Chat list */
+  .chat-list { flex: 1; overflow-y: auto; }
+  .chat-list::-webkit-scrollbar { width: 4px; }
+  .chat-list::-webkit-scrollbar-track { background: transparent; }
+  .chat-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+  .chat-section-label {
+    padding: 10px 16px 6px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  .chat-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: background 0.15s;
+    position: relative;
+  }
+  .chat-item:hover { background: var(--hover); }
+  .chat-item.active {
+    background: rgba(0,229,160,0.07);
+    border-left: 2px solid var(--accent);
+  }
+  .chat-avatar-wrap { position: relative; flex-shrink: 0; }
+  .chat-avatar {
+    width: 46px; height: 46px; border-radius: 14px;
+    background: #1e2130;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 600; color: var(--text);
+    overflow: hidden;
+  }
+  .chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .status-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--online);
+    border: 2px solid var(--sidebar-bg);
+    position: absolute; bottom: 1px; right: 1px;
+    box-shadow: 0 0 6px var(--accent);
+  }
+  .status-dot.away { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+  .status-dot.offline { background: #374151; box-shadow: none; }
+  .chat-info { flex: 1; min-width: 0; }
+  .chat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+  .chat-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .chat-time { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .chat-preview { display: flex; align-items: center; gap: 4px; }
+  .chat-last { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+  .unread-badge {
+    background: var(--accent);
+    color: #000;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px; height: 18px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 5px;
+    flex-shrink: 0;
+  }
+  .tick { color: var(--accent); font-size: 12px; }
+  .tick.grey { color: var(--text-muted); }
+
+  /* ─── CHAT PANEL ─── */
+  .chat-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--chat-bg);
+    position: relative;
+  }
+  .chat-bg-pattern {
+    position: absolute; inset: 0;
+    opacity: 0.03;
+    background-image: radial-gradient(circle, var(--accent) 1px, transparent 1px);
+    background-size: 30px 30px;
+    pointer-events: none;
+  }
+
+  /* Chat Header */
+  .chat-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,12,16,0.95);
+    backdrop-filter: blur(10px);
+    z-index: 10;
+  }
+  .chat-header-avatar {
+    width: 42px; height: 42px; border-radius: 13px;
+    background: #1e2130;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .chat-header-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .chat-header-info { flex: 1; }
+  .chat-header-name { font-size: 15px; font-weight: 600; }
+  .chat-header-status { font-size: 12px; color: var(--accent); display: flex; align-items: center; gap: 4px; }
+  .typing-dots span {
+    display: inline-block; width: 4px; height: 4px;
+    border-radius: 50%; background: var(--accent);
+    animation: bounce 1s infinite;
+  }
+  .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-4px)} }
+  .chat-header-actions { display: flex; gap: 6px; }
+
+  /* Messages area */
+  .messages-area {
+    flex: 1; overflow-y: auto;
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 6px;
+    position: relative;
+  }
+  .messages-area::-webkit-scrollbar { width: 4px; }
+  .messages-area::-webkit-scrollbar-track { background: transparent; }
+  .messages-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 4px; }
+
+  .date-divider {
+    display: flex; align-items: center; gap: 10px;
+    margin: 12px 0; color: var(--text-muted); font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .date-divider::before, .date-divider::after {
+    content: ''; flex: 1; height: 1px;
+    background: var(--border);
+  }
+
+  .msg-row {
+    display: flex;
+    animation: msgIn 0.25s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes msgIn { from { opacity:0; transform:translateY(10px) scale(0.97); } to { opacity:1; transform:none; } }
+  .msg-row.out { justify-content: flex-end; }
+  .msg-row.in { justify-content: flex-start; }
+
+  .bubble {
+    max-width: 68%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    position: relative;
+  }
+  .bubble.out {
+    background: var(--bubble-out);
+    color: #000;
+    border-bottom-right-radius: 4px;
+    font-weight: 500;
+  }
+  .bubble.in {
+    background: var(--bubble-in);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .bubble-meta {
+    display: flex; align-items: center; gap: 4px; justify-content: flex-end;
+    margin-top: 4px; font-size: 10px;
+  }
+  .bubble.out .bubble-meta { color: rgba(0,0,0,0.55); }
+  .bubble.in .bubble-meta { color: var(--text-muted); }
+
+  /* Media bubble */
+  .bubble.media {
+    padding: 4px;
+    background: none;
+    border: none;
+  }
+  .bubble.media .media-img {
+    width: 220px; height: 160px;
+    border-radius: 14px;
+    object-fit: cover;
+    display: block;
+    background: #1e2130;
+  }
+  .bubble.media.out { border: none; }
+
+  /* Reaction */
+  .reaction {
+    position: absolute;
+    bottom: -12px; right: 8px;
+    background: #1a1d27;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1px 7px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  /* Typing indicator */
+  .typing-bubble {
+    background: var(--bubble-in);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    border-bottom-left-radius: 4px;
+    padding: 12px 16px;
+    display: none;
+    align-items: center; gap: 5px;
+  }
+  .typing-bubble.visible { display: flex; }
+  .typing-bubble span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    animation: bounce 1s infinite;
+  }
+  .typing-bubble span:nth-child(2) { animation-delay: 0.15s; }
+  .typing-bubble span:nth-child(3) { animation-delay: 0.3s; }
+
+  /* ─── INPUT AREA ─── */
+  .input-area {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: rgba(10,12,16,0.97);
+    display: flex; align-items: flex-end; gap: 10px;
+  }
+  .input-wrap {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex; align-items: flex-end; gap: 8px;
+    padding: 10px 14px;
+    transition: border-color 0.2s;
+  }
+  .input-wrap:focus-within {
+    border-color: rgba(0,229,160,0.35);
+    box-shadow: 0 0 0 3px rgba(0,229,160,0.06);
+  }
+  .msg-input {
+    flex: 1; background: none; border: none; outline: none;
+    color: var(--text); font-family: 'Sora', sans-serif; font-size: 13.5px;
+    resize: none; max-height: 100px; min-height: 22px;
+    line-height: 1.5;
+  }
+  .msg-input::placeholder { color: var(--text-muted); }
+  .input-actions { display: flex; gap: 6px; align-items: center; }
+  .small-icon-btn {
+    width: 28px; height: 28px; border-radius: 8px;
+    border: none; background: none;
+    color: var(--text-muted); cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: color 0.15s;
+  }
+  .small-icon-btn:hover { color: var(--accent); }
+  .send-btn {
+    width: 44px; height: 44px;
+    border-radius: 14px;
+    border: none;
+    background: var(--bubble-out);
+    color: #000;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 0 16px rgba(0,229,160,0.25);
+    flex-shrink: 0;
+  }
+  .send-btn:hover { transform: scale(1.07); box-shadow: 0 0 24px rgba(0,229,160,0.4); }
+  .send-btn:active { transform: scale(0.96); }
+
+  /* ─── RIGHT PANEL ─── */
+  .right-panel {
+    width: 280px; min-width: 280px;
+    background: var(--sidebar-bg);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 20px;
+    gap: 18px;
+  }
+  .profile-card {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    padding-bottom: 18px; border-bottom: 1px solid var(--border);
+  }
+  .profile-big-avatar {
+    width: 74px; height: 74px; border-radius: 22px;
+    background: #1e2130;
+    font-size: 34px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 30px rgba(0,229,160,0.15);
+    border: 2px solid rgba(0,229,160,0.2);
+    overflow: hidden;
+  }
+  .profile-big-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-name { font-size: 16px; font-weight: 700; }
+  .profile-tag { font-size: 11px; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+  .profile-status {
+    font-size: 12px; color: var(--text-muted);
+    text-align: center; line-height: 1.5;
+  }
+
+  .panel-section h4 {
+    font-size: 10px; font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 10px;
+  }
+  .shared-media {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 4px;
+  }
+  .media-thumb {
+    aspect-ratio: 1; border-radius: 8px;
+    background: #1e2130;
+    font-size: 22px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .media-thumb:hover { opacity: 0.75; }
+
+  .group-members { display: flex; flex-direction: column; gap: 8px; }
+  .member-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .member-ava {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: #1e2130;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .member-name { font-size: 13px; color: var(--text); }
+  .member-role { font-size: 11px; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+
+  /* ─── EMOJI PICKER ─── */
+  .emoji-picker {
+    position: absolute;
+    bottom: 70px; left: 20px;
+    background: #1a1d27;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 12px;
+    display: none;
+    gap: 6px;
+    flex-wrap: wrap;
+    width: 220px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    z-index: 100;
+  }
+  .emoji-picker.open { display: flex; }
+  .emoji-item { font-size: 22px; cursor: pointer; padding: 3px; border-radius: 6px; transition: background 0.15s; }
+  .emoji-item:hover { background: rgba(255,255,255,0.07); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+  @media (max-width: 900px) {
+    .right-panel { display: none; }
+  }
+  @media (max-width: 600px) {
+    .sidebar { width: 100%; min-width: unset; }
+    .chat-panel { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── SIDEBAR ─── -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">ZapTalk</div>
+        <div class="logo-tag">v2.0 • encrypted</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" title="New Chat">✏️</button>
+      <button class="icon-btn" title="Settings">⚙️</button>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="Search chats, people…" id="searchInput" oninput="filterChats(this.value)">
+    </div>
+  </div>
+
+  <!-- Stories -->
+  <div class="stories-row">
+    <div class="story add-story">
+      <div class="story-ring add">
+        <div class="story-avatar">➕</div>
+      </div>
+      <span class="story-name">My Story</span>
+    </div>
+    <div class="story" onclick="showStory('Zara K.')">
+      <div class="story-ring">
+        <div class="story-avatar">👩</div>
+      </div>
+      <span class="story-name">Zara K.</span>
+    </div>
+    <div class="story" onclick="showStory('Dev Team')">
+      <div class="story-ring">
+        <div class="story-avatar">💻</div>
+      </div>
+      <span class="story-name">Dev Team</span>
+    </div>
+    <div class="story" onclick="showStory('Rayan')">
+      <div class="story-ring">
+        <div class="story-avatar">🧑</div>
+      </div>
+      <span class="story-name">Rayan</span>
+    </div>
+    <div class="story" onclick="showStory('Mehak')">
+      <div class="story-ring">
+        <div class="story-avatar">🌸</div>
+      </div>
+      <span class="story-name">Mehak</span>
+    </div>
+  </div>
+
+  <!-- Chat List -->
+  <div class="chat-list" id="chatList">
+    <div class="chat-section-label">Pinned</div>
+
+    <div class="chat-item active" onclick="openChat('Dev Team 🚀', '💻', 'online', true)" data-name="Dev Team">
+      <div class="chat-avatar-wrap">
+        <div class="chat-avatar">💻</div>
+        <div class="status-dot"></div>
+      </div>
+      <div class="chat-info">
+        <div class="chat-top">
+          <span class="chat-name">Dev Team 🚀</span>
+          <span class="chat-time">12:41</span>
+        </div>
+        <div class="chat-preview">
+          <span class="tick">✓✓</span>
+          <span class="chat-last">Ali: Push the new build bro 🔥</span>
+          <div class="unread-badge">3</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-item" onclick="openChat('Zara Khan', '👩', 'online', false)" data-name="Zara Khan">
+      <div class="chat-avatar-wrap">
+        <div class="chat-avatar">👩</div>
+        <div class="status-dot"></div>
+      </div>
+      <div class="chat-info">
+        <div class="chat-top">
+          <span class="chat-name">Zara Khan</span>
+          <span class="chat-time">11:58</span>
+        </div>
+        <div class="chat-preview">
+          <span class="tick">✓✓</span>
+          <span class="chat-last">Okay I'll send it now ✅</span>
+          <div class="unread-badge">1</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-section-label">All Chats</div>
+
+    <div class="chat-item" onclick="openChat('Rayan Malik', '🧑', 'away', false)" data-name="Rayan Malik">
+      <div class="chat-avatar-wrap">
+        <div class="chat-avatar">🧑</div>
+        <div class="status-dot away"></div>
+      </div>
+      <div class="chat-info">
+        <div class="chat-top">
+          <span class="chat-name">Rayan Malik</span>
+          <span class="chat-time">10:20</span>
+        </div>
+        <div class="chat-preview">
+          <span class="tick grey">✓✓</span>
+          <span class="chat-last">bhai kal milte hain 🤝</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-item" onclick="openChat('Mehak Siddiqui', '🌸', 'online', false)" data-name="Mehak Siddiqui">
+      <div class="chat-avatar-wrap">
+        <div class="chat-avatar">🌸</div>
+        <div class="status-dot"></div>
+      </div>
+      <div class="chat-info">
+        <div class="chat-top">
+          <span class="chat-name">Mehak Siddiqui</span>
+          <span class="chat-time">09:05</span>
+        </div>
+        <div class="chat-preview">
+          <span class="tick">✓✓</span>
+          <span class="chat-last">Haha yes that's so funny 😂</span>
+          <div class="unread-badge">5</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-item" onclick="openChat('Hamza Bhai', '🧔', 'offline', false)" data-name="Hamza Bhai">
+      <div class="chat-avatar-wrap">
+        <div class="chat-avatar">🧔</div>
+        <div class="status-dot offline"></div>
+      </div>
+      <div class="chat-info">
+        <div class="chat-top">
+          <span class="chat-name">Hamza Bhai</span>
+          <span class="chat-time">Yesterday</span>
+        </div>
+        <div class="chat-preview">
+          <span class="tick grey">✓</span>
+          <span class="chat-last">Kal tak bhej deta hoon</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-item" onclick="openChat('Design Crew 🎨', '🎨', 'online', true)" data-name="Design Crew">
+      <div class="chat-avatar-wrap">
+        <div class="chat-avatar">🎨</div>
+        <div class="status-dot"></div>
+      </div>
+      <div class="chat-info">
+        <div class="chat-top">
+          <span class="chat-name">Design Crew 🎨</span>
+          <span class="chat-time">Mon</span>
+        </div>
+        <div class="chat-preview">
+          <span class="tick grey">✓✓</span>
+          <span class="chat-last">Sara: New mockups are ready 🖼️</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-item" onclick="openChat('Sana Riaz', '🧕', 'offline', false)" data-name="Sana Riaz">
+      <div class="chat-avatar-wrap">
+        <div class="chat-avatar">🧕</div>
+        <div class="status-dot offline"></div>
+      </div>
+      <div class="chat-info">
+        <div class="chat-top">
+          <span class="chat-name">Sana Riaz</span>
+          <span class="chat-time">Sun</span>
+        </div>
+        <div class="chat-preview">
+          <span class="tick grey">✓✓</span>
+          <span class="chat-last">JazakAllah! 🌟</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── CHAT PANEL ─── -->
+<div class="chat-panel">
+  <div class="chat-bg-pattern"></div>
+
+  <!-- Header -->
+  <div class="chat-header">
+    <div class="chat-header-avatar" id="headerAvatar">💻</div>
+    <div class="chat-header-info">
+      <div class="chat-header-name" id="headerName">Dev Team 🚀</div>
+      <div class="chat-header-status" id="headerStatus">
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+        Ali is typing…
+      </div>
+    </div>
+    <div class="chat-header-actions">
+      <button class="icon-btn">📞</button>
+      <button class="icon-btn">📹</button>
+      <button class="icon-btn">🔍</button>
+      <button class="icon-btn">⋮</button>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div class="messages-area" id="messagesArea">
+    <div class="date-divider">Today</div>
+
+    <div class="msg-row in">
+      <div class="bubble in">
+        Assalam o Alaikum everyone! 👋 Dev meeting at 3pm confirm hai?
+        <div class="bubble-meta"><span>10:00</span></div>
+      </div>
+    </div>
+
+    <div class="msg-row out">
+      <div class="bubble out">
+        Wa Alaikum Assalam! Haan bilkul, main ready hoon ✅
+        <div class="bubble-meta"><span>10:02</span> <span>✓✓</span></div>
+      </div>
+    </div>
+
+    <div class="msg-row in">
+      <div class="bubble in">
+        Perfect! Koi nayi feature request aayi hai client ki taraf se 🚨
+        <div class="bubble-meta"><span>10:05</span></div>
+        <div class="reaction">😮</div>
+      </div>
+    </div>
+
+    <div class="msg-row out">
+      <div class="bubble out">
+        Seriously?! Kaunsi feature? Dark mode wali thi na?
+        <div class="bubble-meta"><span>10:06</span> <span>✓✓</span></div>
+      </div>
+    </div>
+
+    <div class="msg-row in">
+      <div class="bubble in">
+        Haan aur saath mein real-time notifications bhi chahiye 🔔 Deadline Sunday hai yaar
+        <div class="bubble-meta"><span>10:08</span></div>
+      </div>
+    </div>
+
+    <div class="msg-row out">
+      <div class="bubble out">
+        Sunday?! Bhai itni jaldi? 😅 Theek hai kar lete hain, socket.io se ho jayega
+        <div class="bubble-meta"><span>10:10</span> <span>✓✓</span></div>
+        <div class="reaction">🔥</div>
+      </div>
+    </div>
+
+    <div class="msg-row in">
+      <div class="bubble in">
+        You're the GOAT bro 🐐 Main UI side handle karta hoon
+        <div class="bubble-meta"><span>10:12</span></div>
+      </div>
+    </div>
+
+    <div class="msg-row in">
+      <div class="bubble in">
+        ZapTalk ke liye bhi ek feature request aayi — voice messages add karo! 🎙️
+        <div class="bubble-meta"><span>12:38</span></div>
+      </div>
+    </div>
+
+    <div class="msg-row out">
+      <div class="bubble out">
+        Lol yahi soch raha tha main bhi! Next sprint mein daalte hain 🎯
+        <div class="bubble-meta"><span>12:40</span> <span>✓✓</span></div>
+      </div>
+    </div>
+
+    <!-- Typing indicator -->
+    <div class="msg-row in" id="typingRow" style="display:none;">
+      <div class="typing-bubble visible">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Emoji picker -->
+  <div class="emoji-picker" id="emojiPicker">
+    <span class="emoji-item" onclick="addEmoji('😂')">😂</span>
+    <span class="emoji-item" onclick="addEmoji('❤️')">❤️</span>
+    <span class="emoji-item" onclick="addEmoji('🔥')">🔥</span>
+    <span class="emoji-item" onclick="addEmoji('✅')">✅</span>
+    <span class="emoji-item" onclick="addEmoji('😅')">😅</span>
+    <span class="emoji-item" onclick="addEmoji('🙏')">🙏</span>
+    <span class="emoji-item" onclick="addEmoji('😎')">😎</span>
+    <span class="emoji-item" onclick="addEmoji('💯')">💯</span>
+    <span class="emoji-item" onclick="addEmoji('🚀')">🚀</span>
+    <span class="emoji-item" onclick="addEmoji('👍')">👍</span>
+    <span class="emoji-item" onclick="addEmoji('😮')">😮</span>
+    <span class="emoji-item" onclick="addEmoji('🎯')">🎯</span>
+    <span class="emoji-item" onclick="addEmoji('💪')">💪</span>
+    <span class="emoji-item" onclick="addEmoji('🤔')">🤔</span>
+    <span class="emoji-item" onclick="addEmoji('😊')">😊</span>
+    <span class="emoji-item" onclick="addEmoji('⚡')">⚡</span>
+  </div>
+
+  <!-- Input -->
+  <div class="input-area">
+    <div class="input-wrap">
+      <textarea class="msg-input" id="msgInput" placeholder="Type a message…" rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <div class="input-actions">
+        <button class="small-icon-btn" onclick="toggleEmoji()" title="Emoji">😊</button>
+        <button class="small-icon-btn" title="Attach">📎</button>
+        <button class="small-icon-btn" title="Camera">📷</button>
+      </div>
+    </div>
+    <button class="send-btn" onclick="sendMessage()" title="Send">
+      ⚡
+    </button>
+  </div>
+</div>
+
+<!-- ─── RIGHT PANEL ─── -->
+<div class="right-panel">
+  <div class="profile-card">
+    <div class="profile-big-avatar" id="profileAvatar">💻</div>
+    <div class="profile-name" id="profileName">Dev Team 🚀</div>
+    <div class="profile-tag" id="profileTag">@devteam • Group</div>
+    <div class="profile-status">Building awesome things one commit at a time 🚀</div>
+  </div>
+
+  <div class="panel-section">
+    <h4>Shared Media</h4>
+    <div class="shared-media">
+      <div class="media-thumb">🖼️</div>
+      <div class="media-thumb">📄</div>
+      <div class="media-thumb">🎵</div>
+      <div class="media-thumb">🖼️</div>
+      <div class="media-thumb">📹</div>
+      <div class="media-thumb">🖼️</div>
+    </div>
+  </div>
+
+  <div class="panel-section" id="membersSection">
+    <h4>Members (4)</h4>
+    <div class="group-members">
+      <div class="member-row">
+        <div class="member-ava">🧑</div>
+        <div>
+          <div class="member-name">You</div>
+          <div class="member-role">admin</div>
+        </div>
+      </div>
+      <div class="member-row">
+        <div class="member-ava">👨</div>
+        <div>
+          <div class="member-name">Ali Hassan</div>
+          <div class="member-role">member</div>
+        </div>
+      </div>
+      <div class="member-row">
+        <div class="member-ava">👩</div>
+        <div>
+          <div class="member-name">Sara Qureshi</div>
+          <div class="member-role">member</div>
+        </div>
+      </div>
+      <div class="member-row">
+        <div class="member-ava">🧔</div>
+        <div>
+          <div class="member-name">Bilal Rao</div>
+          <div class="member-role">member</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const replies = [
+    "Haan bilkul! 👍",
+    "Theek hai yaar, kar lete hain 💪",
+    "Wah bhai, mast idea hai! 🔥",
+    "Ok ok, main dekh raha hoon ✅",
+    "Lol 😂😂 sahi kaha",
+    "Bhai kuch nahi hota, chill karo 😎",
+    "Send kar do yaar jaldi se ⚡",
+    "Done! Deploy ho gaya 🚀",
+    "Acha acha, samajh gaya 🤔",
+    "ZapTalk best hai! 💯",
+    "Meeting mein baat karte hain 🗓️",
+    "Yes bhai, fully agree 🙏",
+  ];
+
+  let typingTimer;
+
+  function sendMessage() {
+    const input = document.getElementById('msgInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const area = document.getElementById('messagesArea');
+    const typingRow = document.getElementById('typingRow');
+
+    // Create out bubble
+    const row = document.createElement('div');
+    row.className = 'msg-row out';
+    const now = new Date();
+    const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+    row.innerHTML = `<div class="bubble out">${escapeHtml(text)}<div class="bubble-meta"><span>${time}</span> <span>✓</span></div></div>`;
+    area.insertBefore(row, typingRow);
+
+    input.value = '';
+    input.style.height = 'auto';
+    area.scrollTop = area.scrollHeight;
+    closeEmoji();
+
+    // Show typing indicator
+    clearTimeout(typingTimer);
+    typingRow.style.display = 'flex';
+    area.scrollTop = area.scrollHeight;
+
+    typingTimer = setTimeout(() => {
+      typingRow.style.display = 'none';
+      // Reply
+      const reply = replies[Math.floor(Math.random() * replies.length)];
+      const replyRow = document.createElement('div');
+      replyRow.className = 'msg-row in';
+      const t2 = new Date();
+      const rtime = t2.getHours().toString().padStart(2,'0') + ':' + t2.getMinutes().toString().padStart(2,'0');
+      replyRow.innerHTML = `<div class="bubble in">${reply}<div class="bubble-meta"><span>${rtime}</span></div></div>`;
+      area.insertBefore(replyRow, typingRow);
+      area.scrollTop = area.scrollHeight;
+    }, 1500 + Math.random() * 1000);
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function toggleEmoji() {
+    const p = document.getElementById('emojiPicker');
+    p.classList.toggle('open');
+  }
+  function closeEmoji() {
+    document.getElementById('emojiPicker').classList.remove('open');
+  }
+  function addEmoji(e) {
+    const inp = document.getElementById('msgInput');
+    inp.value += e;
+    inp.focus();
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#emojiPicker') && !e.target.closest('.small-icon-btn')) closeEmoji();
+  });
+
+  const chatData = {
+    'Zara Khan': { emoji:'👩', status:'online', tag:'@zarakhan', bio:'Dreamer. Designer. Tea addict ☕', isGroup: false },
+    'Dev Team 🚀': { emoji:'💻', status:'online', tag:'@devteam • Group', bio:'Building awesome things one commit at a time 🚀', isGroup: true },
+    'Rayan Malik': { emoji:'🧑', status:'away', tag:'@rayanmalik', bio:'Away for a bit, brb 🚶', isGroup: false },
+    'Mehak Siddiqui': { emoji:'🌸', status:'online', tag:'@mehaks', bio:'Life is beautiful ✨', isGroup: false },
+    'Hamza Bhai': { emoji:'🧔', status:'offline', tag:'@hamzabhai', bio:'Last seen 2 hours ago', isGroup: false },
+    'Design Crew 🎨': { emoji:'🎨', status:'online', tag:'@designcrew • Group', bio:'Pixels, colors & creativity 🖼️', isGroup: true },
+    'Sana Riaz': { emoji:'🧕', status:'offline', tag:'@sanariaz', bio:'Last seen yesterday', isGroup: false },
+  };
+
+  function openChat(name, emoji, status, isGroup) {
+    document.querySelectorAll('.chat-item').forEach(i => i.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    // Remove unread badge
+    const badge = event.currentTarget.querySelector('.unread-badge');
+    if (badge) badge.remove();
+
+    document.getElementById('headerAvatar').textContent = emoji;
+    document.getElementById('headerName').textContent = name;
+    document.getElementById('profileAvatar').textContent = emoji;
+    document.getElementById('profileName').textContent = name;
+
+    const data = Object.values(chatData).find(v => v.emoji === emoji) || {};
+    document.getElementById('profileTag').textContent = data.tag || '';
+    document.getElementById('headerStatus').innerHTML = status === 'online'
+      ? `<div class="typing-dots"><span></span><span></span><span></span></div> Typing…`
+      : status === 'away' ? '🟡 Away' : '⚫ Offline';
+
+    document.getElementById('membersSection').style.display = isGroup ? '' : 'none';
+  }
+
+  function filterChats(q) {
+    document.querySelectorAll('.chat-item').forEach(item => {
+      const name = item.dataset.name || '';
+      item.style.display = name.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+    });
+  }
+
+  function showStory(name) {
+    alert(`📸 ${name}'s Story\n\n(Story viewer would open here in full version)`);
+  }
+
+  // Auto-scroll on load
+  window.onload = () => {
+    const area = document.getElementById('messagesArea');
+    area.scrollTop = area.scrollHeight;
+  };
+</script>
+</body>
+</html>
